@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gesture Controlled 3D Particles</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* Hidden video element for MediaPipe processing */
+        #input-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: rgba(255, 255, 255, 0.9);
+            transition: opacity 0.5s ease;
+        }
+
+        .ui-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            letter-spacing: 1px;
+        }
+
+        .status-box {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 300px;
+        }
+
+        .instruction-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .key {
+            font-weight: bold;
+            color: #00d2ff;
+            margin-right: 8px;
+            min-width: 90px;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00d2ff;
+            font-size: 1.2rem;
+            z-index: 20;
+            text-align: center;
+            animation: pulse 1.5s infinite;
+        }
+
+        #current-mode {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #ff0055;
+            margin-top: 10px;
+            text-transform: uppercase;
+        }
+
+        .model-badge {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #00d2ff, #ff00aa);
+            color: #fff;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            box-shadow: 0 0 12px rgba(255, 0, 170, 0.4);
+        }
+
+        .hint-text {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: #aaa;
+            font-style: italic;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Small preview of camera */
+        #cam-preview {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 160px;
+            height: 120px;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            z-index: 10;
+            transform: scaleX(-1);
+            /* Mirror effect */
+            background: #111;
+            object-fit: cover;
+            transition: opacity 0.5s ease;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loading">Initializing High-Precision Mode...<br><span style="font-size:0.8rem; color:#aaa;">Please allow
+            camera access</span></div>
+
+    <div id="ui-layer">
+        <div class="status-box">
+            <h1>Particle Shaper</h1>
+            <div id="model-badge" class="model-badge">GPT-5.1-Codex-Max Enabled</div>
+            <div id="gesture-data">
+                <div class="instruction-item"><span class="key">Fist (0)</span> DNA Helix</div>
+                <div class="instruction-item"><span class="key">Thumbs Up</span> Galaxy</div>
+                <div class="instruction-item"><span class="key">"L" Shape</span> Pyramid</div>
+                <div class="instruction-item"><span class="key">1 Finger</span> Sphere</div>
+                <div class="instruction-item"><span class="key">Rock (🤘)</span> Cube</div>
+                <div class="instruction-item"><span class="key">2 Fingers</span> Heart</div>
+                <div class="instruction-item"><span class="key">3 Fingers</span> Flower</div>
+                <div class="instruction-item"><span class="key">4 Fingers</span> Saturn</div>
+                <div class="instruction-item"><span class="key">5 Fingers</span> Fireworks</div>
+                <div class="instruction-item"><span class="key">Pinch</span> Gravity Well</div>
+            </div>
+            <div id="current-mode">Mode: Sphere</div>
+            <div class="hint-text">Press 'H' to toggle UI</div>
+        </div>
+    </div>
+
+    <!-- Video Element for MediaPipe (Hidden logic) -->
+    <video id="input-video" playsinline></video>
+    <!-- Visual Feedback Cam -->
+    <video id="cam-preview" playsinline muted autoplay></video>
+
+    <div id="canvas-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+    <script>
+        // --- Configuration ---
+        const MODEL_NAME = 'GPT-5.1-Codex-Max';
+        const PARTICLE_COUNT = 15000;
+        const PARTICLE_SIZE = 0.08;
+        const TRANSITION_SPEED = 0.04; // Slightly faster for responsiveness
+
+        // --- Global State ---
+        let mode = 'sphere';
+        let isPinching = false;
+        let handPosition = { x: 0, y: 0, z: 0 };
+        let handDetected = false;
+        let uiVisible = true;
+
+        const modelBadge = document.getElementById('model-badge');
+        if (modelBadge) {
+            modelBadge.textContent = `${MODEL_NAME} Enabled`;
+        }
+
+        // --- UI Toggle ---
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'h') {
+                uiVisible = !uiVisible;
+                const ui = document.getElementById('ui-layer');
+                const cam = document.getElementById('cam-preview');
+                if (uiVisible) {
+                    ui.classList.remove('ui-hidden');
+                    cam.classList.remove('ui-hidden');
+                } else {
+                    ui.classList.add('ui-hidden');
+                    cam.classList.add('ui-hidden');
+                }
+            }
+        });
+
+        // --- Three.js Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.z = 8;
+        camera.position.y = 0;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // --- Particle System ---
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(PARTICLE_COUNT * 3);
+        const targetPositions = new Float32Array(PARTICLE_COUNT * 3);
+        const colors = new Float32Array(PARTICLE_COUNT * 3);
+        const velocities = new Float32Array(PARTICLE_COUNT * 3);
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 10;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 10;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 10;
+
+            colors[i * 3] = 1;
+            colors[i * 3 + 1] = 1;
+            colors[i * 3 + 2] = 1;
+
+            velocities[i * 3] = 0; velocities[i * 3 + 1] = 0; velocities[i * 3 + 2] = 0;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const getTexture = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+            gradient.addColorStop(0.5, 'rgba(255,255,255,0.2)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 32, 32);
+            return new THREE.Texture(canvas);
+        };
+        const tex = getTexture();
+        tex.needsUpdate = true;
+
+        const material = new THREE.PointsMaterial({
+            size: PARTICLE_SIZE,
+            map: tex,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        const particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        // --- Shape Generators ---
+
+        function setShapeSphere() {
+            mode = 'sphere';
+            const radius = 3.5;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const phi = Math.acos(-1 + (2 * i) / PARTICLE_COUNT);
+                const theta = Math.sqrt(PARTICLE_COUNT * Math.PI) * phi;
+                targetPositions[i * 3] = radius * Math.cos(theta) * Math.sin(phi);
+                targetPositions[i * 3 + 1] = radius * Math.sin(theta) * Math.sin(phi);
+                targetPositions[i * 3 + 2] = radius * Math.cos(phi);
+                // Blue/Cyan
+                colors[i * 3] = 0.1; colors[i * 3 + 1] = 0.6 + Math.random() * 0.4; colors[i * 3 + 2] = 1.0;
+            }
+        }
+
+        function setShapePyramid() {
+            mode = 'pyramid';
+            const height = 5.0;
+            const baseSize = 4.0;
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                // Random height level
+                const y = Math.random() * height;
+                // At this y, the square slice has width w
+                const progress = 1 - (y / height);
+                const w = baseSize * progress;
+
+                const x = (Math.random() - 0.5) * 2 * w;
+                const z = (Math.random() - 0.5) * 2 * w;
+
+                targetPositions[i * 3] = x;
+                targetPositions[i * 3 + 1] = y - (height / 2); // Center y
+                targetPositions[i * 3 + 2] = z;
+
+                // Gold/Yellow
+                colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.8 + Math.random() * 0.2; colors[i * 3 + 2] = 0.0;
+            }
+        }
+
+        function setShapeGalaxy() {
+            mode = 'galaxy';
+            const arms = 5;
+            const armWidth = 0.8;
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const percent = i / PARTICLE_COUNT;
+                const r = percent * 6; // Radius
+                const spinAngle = r * 2.5;
+                const armAngle = (Math.floor(Math.random() * arms) * 2 * Math.PI) / arms;
+
+                const angle = spinAngle + armAngle + (Math.random() - 0.5) * armWidth / r * 5; // Spread
+
+                targetPositions[i * 3] = r * Math.cos(angle);
+                targetPositions[i * 3 + 1] = (Math.random() - 0.5) * (0.2 + (r * 0.1)); // Thickness increases with radius
+                targetPositions[i * 3 + 2] = r * Math.sin(angle);
+
+                // Purple/Pink/Blue
+                colors[i * 3] = 0.5 + Math.random() * 0.5;
+                colors[i * 3 + 1] = 0.1;
+                colors[i * 3 + 2] = 0.8 + Math.random() * 0.2;
+            }
+        }
+
+        function setShapeCube() {
+            mode = 'cube';
+            const size = 2.0;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const face = Math.floor(Math.random() * 6);
+                let x, y, z;
+                const u = (Math.random() - 0.5) * 2 * size;
+                const v = (Math.random() - 0.5) * 2 * size;
+                switch (face) {
+                    case 0: x = size; y = u; z = v; break;
+                    case 1: x = -size; y = u; z = v; break;
+                    case 2: y = size; x = u; z = v; break;
+                    case 3: y = -size; x = u; z = v; break;
+                    case 4: z = size; x = u; y = v; break;
+                    case 5: z = -size; x = u; y = v; break;
+                }
+                targetPositions[i * 3] = x; targetPositions[i * 3 + 1] = y; targetPositions[i * 3 + 2] = z;
+                // Matrix Green
+                colors[i * 3] = 0.0; colors[i * 3 + 1] = 1.0; colors[i * 3 + 2] = 0.2 + Math.random() * 0.3;
+            }
+        }
+
+        function setShapeHelix() {
+            mode = 'helix';
+            const radius = 1.8; const height = 9.0; const twists = 4.0;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const strand = Math.random() > 0.5 ? 0 : Math.PI;
+                const t = (i / PARTICLE_COUNT) * Math.PI * 2 * twists;
+                const y = ((i / PARTICLE_COUNT) - 0.5) * height;
+                targetPositions[i * 3] = radius * Math.cos(t + strand);
+                targetPositions[i * 3 + 1] = y;
+                targetPositions[i * 3 + 2] = radius * Math.sin(t + strand);
+                if (Math.random() > 0.95) {
+                    targetPositions[i * 3] *= Math.random(); targetPositions[i * 3 + 2] *= Math.random();
+                }
+                // Orange
+                colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.4 + Math.random() * 0.3; colors[i * 3 + 2] = 0.1;
+            }
+        }
+
+        function setShapeHeart() {
+            mode = 'heart';
+            const scale = 0.15;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                let t = Math.random() * Math.PI * 2;
+                let r = Math.random();
+                let x = 16 * Math.pow(Math.sin(t), 3);
+                let y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+                let z = (Math.random() - 0.5) * 5 * r;
+                x *= scale * 1.5; y *= scale * 1.5;
+                x += (Math.random() - 0.5) * 0.2; y += (Math.random() - 0.5) * 0.2;
+                targetPositions[i * 3] = x; targetPositions[i * 3 + 1] = y + 1; targetPositions[i * 3 + 2] = z;
+                // Red
+                colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.1; colors[i * 3 + 2] = 0.3 + Math.random() * 0.4;
+            }
+        }
+
+        function setShapeFlower() {
+            mode = 'flower';
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const u = Math.random() * Math.PI * 2;
+                const v = Math.random() * Math.PI;
+                const r = 2 + Math.sin(5 * u) * Math.sin(5 * v);
+                targetPositions[i * 3] = r * Math.sin(v) * Math.cos(u);
+                targetPositions[i * 3 + 1] = r * Math.sin(v) * Math.sin(u);
+                targetPositions[i * 3 + 2] = r * Math.cos(v) * 0.5;
+                const mix = Math.random();
+                colors[i * 3] = mix > 0.5 ? 0.8 : 0.2; colors[i * 3 + 1] = mix > 0.5 ? 0.2 : 0.9; colors[i * 3 + 2] = 0.8;
+            }
+        }
+
+        function setShapeSaturn() {
+            mode = 'saturn';
+            const split = Math.floor(PARTICLE_COUNT * 0.7);
+            const radius = 2.0;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                if (i < split) {
+                    const phi = Math.acos(-1 + (2 * i) / split);
+                    const theta = Math.sqrt(split * Math.PI) * phi;
+                    targetPositions[i * 3] = radius * Math.cos(theta) * Math.sin(phi);
+                    targetPositions[i * 3 + 1] = radius * Math.sin(theta) * Math.sin(phi);
+                    targetPositions[i * 3 + 2] = radius * Math.cos(phi);
+                    colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.8; colors[i * 3 + 2] = 0.2;
+                } else {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 3.5 + Math.random() * 2.0;
+                    targetPositions[i * 3] = Math.cos(angle) * dist;
+                    targetPositions[i * 3 + 1] = (Math.random() - 0.5) * 0.2;
+                    targetPositions[i * 3 + 2] = Math.sin(angle) * dist;
+                    const x = targetPositions[i * 3]; const y = targetPositions[i * 3 + 1]; const z = targetPositions[i * 3 + 2];
+                    const tilt = 0.4;
+                    targetPositions[i * 3] = x;
+                    targetPositions[i * 3 + 1] = y * Math.cos(tilt) - z * Math.sin(tilt);
+                    targetPositions[i * 3 + 2] = y * Math.sin(tilt) + z * Math.cos(tilt);
+                    colors[i * 3] = 0.6; colors[i * 3 + 1] = 0.7; colors[i * 3 + 2] = 0.9;
+                }
+            }
+        }
+
+        function setModeFireworks() {
+            mode = 'fireworks';
+            document.getElementById('current-mode').textContent = "Mode: Fireworks";
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                colors[i * 3] = Math.random(); colors[i * 3 + 1] = Math.random(); colors[i * 3 + 2] = Math.random();
+            }
+        }
+
+        setShapeSphere();
+
+        // --- Animation Loop ---
+        let time = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+            const positionAttribute = geometry.attributes.position;
+            const colorAttribute = geometry.attributes.color;
+
+            // Rotation Logic
+            let rotationSpeed = 0.001;
+            if (handDetected) {
+                // Interactive rotation
+                rotationSpeed = (handPosition.x - 0.5) * 0.05;
+                particles.rotation.y += rotationSpeed;
+                particles.rotation.x += (handPosition.y - 0.5) * 0.05;
+            } else {
+                // Idle rotation
+                particles.rotation.y += 0.002;
+            }
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const ix = i * 3; const iy = i * 3 + 1; const iz = i * 3 + 2;
+                let tx = targetPositions[ix]; let ty = targetPositions[iy]; let tz = targetPositions[iz];
+                let px = positions[ix]; let py = positions[iy]; let pz = positions[iz];
+
+                if (mode === 'fireworks') {
+                    if (isPinching && handDetected) {
+                        // Gravity Well
+                        const hx = (1 - handPosition.x - 0.5) * 15;
+                        const hy = -(handPosition.y - 0.5) * 10;
+                        const hz = 0;
+                        velocities[ix] += (hx - px) * 0.005; velocities[iy] += (hy - py) * 0.005; velocities[iz] += (hz - pz) * 0.005;
+                        velocities[ix] *= 0.90; velocities[iy] *= 0.90; velocities[iz] *= 0.90;
+                    } else {
+                        // Explode
+                        velocities[ix] += (Math.random() - 0.5) * 0.02; velocities[iy] += (Math.random() - 0.5) * 0.02; velocities[iz] += (Math.random() - 0.5) * 0.02;
+                        velocities[iy] -= 0.002;
+                        if (Math.abs(px) > 20 || Math.abs(py) > 20 || Math.abs(pz) > 20) {
+                            px = 0; py = 0; pz = 0;
+                            velocities[ix] = (Math.random() - 0.5) * 0.5; velocities[iy] = (Math.random() - 0.5) * 0.5; velocities[iz] = (Math.random() - 0.5) * 0.5;
+                        }
+                    }
+                    px += velocities[ix]; py += velocities[iy]; pz += velocities[iz];
+
+                } else {
+                    // Shape Morphing
+                    const noiseAmplitude = 0.05;
+                    const nx = Math.sin(time + px) * noiseAmplitude;
+                    const ny = Math.cos(time + py) * noiseAmplitude;
+                    const nz = Math.sin(time + pz) * noiseAmplitude;
+
+                    let targetX = tx + nx; let targetY = ty + ny; let targetZ = tz + nz;
+
+                    if (handDetected) {
+                        const hx = (1 - handPosition.x - 0.5) * 12;
+                        const hy = -(handPosition.y - 0.5) * 8;
+                        const hz = 2;
+                        const dx = px - hx; const dy = py - hy; const dz = pz - hz;
+                        const distSq = dx * dx + dy * dy + dz * dz;
+
+                        if (isPinching) {
+                            if (distSq < 20) { targetX = hx; targetY = hy; targetZ = hz; }
+                        } else {
+                            if (distSq < 5) {
+                                const force = (5 - distSq) * 0.5;
+                                targetX += (dx / Math.sqrt(distSq)) * force; targetY += (dy / Math.sqrt(distSq)) * force; targetZ += (dz / Math.sqrt(distSq)) * force;
+                            }
+                        }
+                    }
+                    px += (targetX - px) * TRANSITION_SPEED;
+                    py += (targetY - py) * TRANSITION_SPEED;
+                    pz += (targetZ - pz) * TRANSITION_SPEED;
+                }
+                positions[ix] = px; positions[iy] = py; positions[iz] = pz;
+            }
+            positionAttribute.needsUpdate = true;
+            colorAttribute.needsUpdate = true;
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- MediaPipe Hand Tracking ---
+        const videoElement = document.getElementById('input-video');
+        const previewElement = document.getElementById('cam-preview');
+        const loadingElement = document.getElementById('loading');
+        const modeLabel = document.getElementById('current-mode');
+
+        function onResults(results) {
+            loadingElement.style.display = 'none';
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                handDetected = true;
+                const landmarks = results.multiHandLandmarks[0];
+                const indexTip = landmarks[8];
+                const thumbTip = landmarks[4];
+
+                handPosition.x = handPosition.x * 0.8 + indexTip.x * 0.2;
+                handPosition.y = handPosition.y * 0.8 + indexTip.y * 0.2;
+                handPosition.z = indexTip.z;
+
+                const distance = Math.sqrt(Math.pow(indexTip.x - thumbTip.x, 2) + Math.pow(indexTip.y - thumbTip.y, 2));
+                isPinching = distance < 0.05;
+
+                // Finger Analysis
+                const isFingerUp = (tipIdx, pipIdx) => landmarks[tipIdx].y < landmarks[pipIdx].y;
+
+                const indexUp = isFingerUp(8, 6);
+                const middleUp = isFingerUp(12, 10);
+                const ringUp = isFingerUp(16, 14);
+                const pinkyUp = isFingerUp(20, 18);
+                // Better thumb detection: Check if tip is higher than CMC joint (base)
+                const thumbUp = landmarks[4].y < landmarks[2].y;
+                const thumbOut = landmarks[4].x > landmarks[2].x; // Crude check for extension
+
+                const fingerCount = [indexUp, middleUp, ringUp, pinkyUp, thumbUp].filter(Boolean).length;
+
+                // Gesture Logic
+                if (indexUp && pinkyUp && !middleUp && !ringUp && mode !== 'cube') {
+                    setShapeCube(); modeLabel.textContent = "Mode: Cube";
+                }
+                else if (thumbUp && !indexUp && !middleUp && !ringUp && !pinkyUp && mode !== 'galaxy') {
+                    // Thumbs Up
+                    setShapeGalaxy(); modeLabel.textContent = "Mode: Spiral Galaxy";
+                }
+                else if (indexUp && thumbUp && !middleUp && !ringUp && !pinkyUp && mode !== 'pyramid') {
+                    // "L" Shape (Index + Thumb)
+                    setShapePyramid(); modeLabel.textContent = "Mode: Pyramid";
+                }
+                else if (fingerCount === 0 && mode !== 'helix') {
+                    setShapeHelix(); modeLabel.textContent = "Mode: DNA Helix";
+                }
+                else if (fingerCount === 1 && mode !== 'sphere' && !thumbUp) { // Exclude thumbs up
+                    setShapeSphere(); modeLabel.textContent = "Mode: Sphere";
+                }
+                else if (fingerCount === 2 && mode !== 'heart') {
+                    setShapeHeart(); modeLabel.textContent = "Mode: Heart";
+                }
+                else if (fingerCount === 3 && mode !== 'flower') {
+                    setShapeFlower(); modeLabel.textContent = "Mode: Flower";
+                }
+                else if (fingerCount === 4 && mode !== 'saturn') {
+                    setShapeSaturn(); modeLabel.textContent = "Mode: Saturn";
+                }
+                else if (fingerCount === 5 && mode !== 'fireworks') {
+                    setModeFireworks(); modeLabel.textContent = "Mode: Fireworks";
+                }
+
+                if (isPinching) modeLabel.textContent += " (Pinching)";
+
+            } else {
+                handDetected = false;
+            }
+        }
+
+        const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.75, // Improved Confidence
+            minTrackingConfidence: 0.75
+        });
+
+        hands.onResults(onResults);
+
+        const cameraUtils = new Camera(videoElement, {
+            onFrame: async () => { await hands.send({ image: videoElement }); },
+            width: 640, height: 480
+        });
+
+        navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+            videoElement.srcObject = stream;
+            previewElement.srcObject = stream;
+            cameraUtils.start();
+        }).catch(err => {
+            console.error("Camera error:", err);
+            loadingElement.innerHTML = "Error accessing camera.<br>Please allow permissions and refresh.";
+        });
+    </script>
+</body>
+
+</html>
