@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gesture Controlled 3D Particles</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="loading">Initializing High-Precision Mode...<br><span style="font-size:0.8rem; color:#aaa;">Please allow
+            camera access</span></div>
+
+    <div id="ui-layer">
+        <div class="status-box">
+            <h1>Particle Shaper</h1>
+            <div id="model-badge" class="model-badge">GPT-5.1-Codex-Max Enabled</div>
+            <div id="gesture-data">
+                <div class="instruction-item"><span class="key">Fist (0)</span> DNA Helix</div>
+                <div class="instruction-item"><span class="key">Thumbs Up</span> Galaxy</div>
+                <div class="instruction-item"><span class="key">"L" Shape</span> Pyramid</div>
+                <div class="instruction-item"><span class="key">1 Finger</span> Sphere</div>
+                <div class="instruction-item"><span class="key">Rock (🤘)</span> Cube</div>
+                <div class="instruction-item"><span class="key">2 Fingers</span> Heart</div>
+                <div class="instruction-item"><span class="key">3 Fingers</span> Flower</div>
+                <div class="instruction-item"><span class="key">4 Fingers</span> Saturn</div>
+                <div class="instruction-item"><span class="key">5 Fingers</span> Fireworks</div>
+                <div class="instruction-item"><span class="key">Pinch</span> Gravity Well</div>
+            </div>
+            <div id="current-mode">Mode: Sphere</div>
+            <div class="hint-text">Press 'H' to toggle UI</div>
+        </div>
+    </div>
+
+    <!-- Video Element for MediaPipe (Hidden logic) -->
+    <video id="input-video" playsinline></video>
+    <!-- Visual Feedback Cam -->
+    <video id="cam-preview" playsinline muted autoplay></video>
+
+    <div id="canvas-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+    <!-- Custom Script -->
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,143 @@
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #000;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+}
+
+#canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+}
+
+/* Hidden video element for MediaPipe processing */
+#input-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 10;
+    color: rgba(255, 255, 255, 0.9);
+    transition: opacity 0.5s ease;
+}
+
+.ui-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+h1 {
+    font-size: 1.5rem;
+    margin: 0 0 10px 0;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    letter-spacing: 1px;
+}
+
+.status-box {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    max-width: 300px;
+}
+
+.instruction-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.key {
+    font-weight: bold;
+    color: #00d2ff;
+    margin-right: 8px;
+    min-width: 90px;
+}
+
+#loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #00d2ff;
+    font-size: 1.2rem;
+    z-index: 20;
+    text-align: center;
+    animation: pulse 1.5s infinite;
+}
+
+#current-mode {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #ff0055;
+    margin-top: 10px;
+    text-transform: uppercase;
+}
+
+.model-badge {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #00d2ff, #ff00aa);
+    color: #fff;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    box-shadow: 0 0 12px rgba(255, 0, 170, 0.4);
+}
+
+.hint-text {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: #aaa;
+    font-style: italic;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.5;
+    }
+}
+
+/* Small preview of camera */
+#cam-preview {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 160px;
+    height: 120px;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    z-index: 10;
+    transform: scaleX(-1);
+    /* Mirror effect */
+    background: #111;
+    object-fit: cover;
+    transition: opacity 0.5s ease;
+}
