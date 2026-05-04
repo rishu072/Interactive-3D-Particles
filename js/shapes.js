@@ -1,5 +1,6 @@
-// --- Shape Generators ---
-
+// ==========================================
+// SHAPE: SPHERE
+// ==========================================
 function setShapeSphere() {
     mode = 'sphere';
     const radius = 3.5;
@@ -14,47 +15,43 @@ function setShapeSphere() {
     }
 }
 
+// ==========================================
+// SHAPE: PYRAMID
+// ==========================================
 function setShapePyramid() {
     mode = 'pyramid';
     const height = 5.0;
     const baseSize = 4.0;
-
     for (let i = 0; i < PARTICLE_COUNT; i++) {
-        // Random height level
         const y = Math.random() * height;
-        // At this y, the square slice has width w
         const progress = 1 - (y / height);
         const w = baseSize * progress;
-
         const x = (Math.random() - 0.5) * 2 * w;
         const z = (Math.random() - 0.5) * 2 * w;
-
         targetPositions[i * 3] = x;
-        targetPositions[i * 3 + 1] = y - (height / 2); // Center y
+        targetPositions[i * 3 + 1] = y - (height / 2); 
         targetPositions[i * 3 + 2] = z;
-
         // Gold/Yellow
         colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.8 + Math.random() * 0.2; colors[i * 3 + 2] = 0.0;
     }
 }
 
+// ==========================================
+// SHAPE: GALAXY
+// ==========================================
 function setShapeGalaxy() {
     mode = 'galaxy';
     const arms = 5;
     const armWidth = 0.8;
-
     for (let i = 0; i < PARTICLE_COUNT; i++) {
         const percent = i / PARTICLE_COUNT;
         const r = percent * 6; // Radius
         const spinAngle = r * 2.5;
         const armAngle = (Math.floor(Math.random() * arms) * 2 * Math.PI) / arms;
-
-        const angle = spinAngle + armAngle + (Math.random() - 0.5) * armWidth / r * 5; // Spread
-
+        const angle = spinAngle + armAngle + (Math.random() - 0.5) * armWidth / r * 5; 
         targetPositions[i * 3] = r * Math.cos(angle);
-        targetPositions[i * 3 + 1] = (Math.random() - 0.5) * (0.2 + (r * 0.1)); // Thickness increases with radius
+        targetPositions[i * 3 + 1] = (Math.random() - 0.5) * (0.2 + (r * 0.1)); 
         targetPositions[i * 3 + 2] = r * Math.sin(angle);
-
         // Purple/Pink/Blue
         colors[i * 3] = 0.5 + Math.random() * 0.5;
         colors[i * 3 + 1] = 0.1;
@@ -62,6 +59,9 @@ function setShapeGalaxy() {
     }
 }
 
+// ==========================================
+// SHAPE: CUBE
+// ==========================================
 function setShapeCube() {
     mode = 'cube';
     const size = 2.0;
@@ -84,6 +84,9 @@ function setShapeCube() {
     }
 }
 
+// ==========================================
+// SHAPE: DNA HELIX
+// ==========================================
 function setShapeHelix() {
     mode = 'helix';
     const radius = 1.8; const height = 9.0; const twists = 4.0;
@@ -102,6 +105,9 @@ function setShapeHelix() {
     }
 }
 
+// ==========================================
+// SHAPE: HEART
+// ==========================================
 function setShapeHeart() {
     mode = 'heart';
     const scale = 0.15;
@@ -119,6 +125,9 @@ function setShapeHeart() {
     }
 }
 
+// ==========================================
+// SHAPE: FLOWER
+// ==========================================
 function setShapeFlower() {
     mode = 'flower';
     for (let i = 0; i < PARTICLE_COUNT; i++) {
@@ -133,6 +142,9 @@ function setShapeFlower() {
     }
 }
 
+// ==========================================
+// SHAPE: SATURN
+// ==========================================
 function setShapeSaturn() {
     mode = 'saturn';
     const split = Math.floor(PARTICLE_COUNT * 0.7);
@@ -161,6 +173,9 @@ function setShapeSaturn() {
     }
 }
 
+// ==========================================
+// SHAPE: TORNADO (Secret)
+// ==========================================
 function setShapeTornado() {
     mode = 'tornado';
     const height = 10.0;
@@ -176,21 +191,25 @@ function setShapeTornado() {
     }
 }
 
+// ==========================================
+// SHAPE: BLACK HOLE (Secret)
+// ==========================================
 function setShapeBlackhole() {
     mode = 'blackhole';
     for (let i = 0; i < PARTICLE_COUNT; i++) {
         const angle = Math.random() * Math.PI * 2;
-        // concentrate near center, but not too close (event horizon)
         const dist = 1.5 + Math.pow(Math.random(), 3) * 6.0;
         targetPositions[i * 3] = Math.cos(angle) * dist;
-        targetPositions[i * 3 + 1] = (Math.random() - 0.5) * (1.0 / dist); // flatter at edges
+        targetPositions[i * 3 + 1] = (Math.random() - 0.5) * (1.0 / dist); 
         targetPositions[i * 3 + 2] = Math.sin(angle) * dist;
-        // Orange/Red/Black
         const heat = Math.max(0, 1.0 - (dist - 1.5) / 3.0);
         colors[i * 3] = heat + 0.2; colors[i * 3 + 1] = heat * 0.5; colors[i * 3 + 2] = heat * 0.1;
     }
 }
 
+// ==========================================
+// SHAPE: SOLAR SYSTEM (Secret)
+// ==========================================
 function setShapeSolarSystem() {
     mode = 'solarsystem';
     const sunCount = 2000;
@@ -224,6 +243,9 @@ function setShapeSolarSystem() {
     }
 }
 
+// ==========================================
+// EFFECT: SHOCKWAVE POWER
+// ==========================================
 function triggerShockwave() {
     for (let i = 0; i < PARTICLE_COUNT; i++) {
         const ix = i * 3; const iy = i * 3 + 1; const iz = i * 3 + 2;
@@ -236,6 +258,9 @@ function triggerShockwave() {
     }
 }
 
+// ==========================================
+// MODE: FIREWORKS
+// ==========================================
 function setModeFireworks() {
     mode = 'fireworks';
     document.getElementById('current-mode').textContent = "Mode: Fireworks";
@@ -243,3 +268,6 @@ function setModeFireworks() {
         colors[i * 3] = Math.random(); colors[i * 3 + 1] = Math.random(); colors[i * 3 + 2] = Math.random();
     }
 }
+
+// Set initial shape
+setShapeSphere();
